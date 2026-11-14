@@ -199,9 +199,8 @@ function MenuPreview() {
         </div>
         <div className="grid gap-5 md:grid-cols-3">
           {menuItems.map((item) => (
-            <article className="overflow-hidden rounded-lg border border-ocean-100 bg-white shadow-sm" key={item.name}>
-              <img className="h-52 w-full object-cover" src={item.image} alt={item.alt} loading="lazy" />
-              <div className="p-6">
+            <article className="rounded-lg border border-ocean-100 bg-white p-6 shadow-sm" key={item.name}>
+              <div>
                 <div className="flex items-start justify-between gap-4">
                   <h3 className="text-2xl font-black text-slate-950">{item.name}</h3>
                   <span className="shrink-0 rounded-full bg-ocean-100 px-3 py-1 text-sm font-black text-ocean-600">
@@ -209,6 +208,12 @@ function MenuPreview() {
                   </span>
                 </div>
                 <p className="mt-5 leading-7 text-slate-600">{item.note}</p>
+                <img
+                  className="mt-6 aspect-[4/3] w-full rounded-lg border border-ocean-100 object-cover"
+                  src={item.image}
+                  alt={item.alt}
+                  loading="lazy"
+                />
               </div>
             </article>
           ))}
