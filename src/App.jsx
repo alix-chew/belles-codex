@@ -207,13 +207,13 @@ function MenuPreview() {
                     {item.price}
                   </span>
                 </div>
-                <p className="mt-5 leading-7 text-slate-600">{item.note}</p>
                 <img
                   className="mt-6 aspect-[4/3] w-full rounded-lg border border-ocean-100 object-cover"
                   src={item.image}
                   alt={item.alt}
                   loading="lazy"
                 />
+                <p className="mt-5 leading-7 text-slate-600">{item.note}</p>
               </div>
             </article>
           ))}
