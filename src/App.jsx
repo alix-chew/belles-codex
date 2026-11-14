@@ -15,16 +15,25 @@ const menuItems = [
     name: "Signature Kopi",
     price: "S$3.80",
     note: "Nanyang-style kopi with oat milk and a caramelised aroma.",
+    image:
+      "https://www.visitsingapore.com/vi_vn/things-to-do/dining/local-food-and-drinks/_jcr_content/root/responsivegrid/containercomponent_c/par/columncntrl/par1/image.img.jpeg/1772172552090/kopi-1148x1000.jpeg",
+    alt: "A white ceramic cup of Singapore kopi on a saucer.",
   },
   {
     name: "Kaya Toast Set",
     price: "S$6.90",
     note: "Plant-based kaya, coconut spread, seeded toast, and kopi.",
+    image:
+      "https://dam.mediacorp.sg/image/upload/s--7BDWriAF--/c_fill%2Cg_auto/f_auto%2Cq_auto/v1/8world/images/2026/03/30/20260330_ls_peh-gao-kaya-toast-set.jpg?itok=6vK5eIr8",
+    alt: "Kaya toast breakfast set with soft-boiled egg and kopi.",
   },
   {
     name: "Uncle's Laksa",
     price: "S$9.80",
     note: "A creamy, plant-based laksa with tofu puffs and herbs.",
+    image:
+      "https://static.wixstatic.com/media/60409b_8a81539615af4d6ba2270331c04a4f29~mv2.jpg/v1/fill/w_980%2Ch_735%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/60409b_8a81539615af4d6ba2270331c04a4f29~mv2.jpg",
+    alt: "A bowl of Nyonya laksa with tofu puffs, prawns, fish cake and herbs.",
   },
 ];
 
@@ -190,14 +199,17 @@ function MenuPreview() {
         </div>
         <div className="grid gap-5 md:grid-cols-3">
           {menuItems.map((item) => (
-            <article className="rounded-lg border border-ocean-100 bg-white p-6 shadow-sm" key={item.name}>
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="text-2xl font-black text-slate-950">{item.name}</h3>
-                <span className="shrink-0 rounded-full bg-ocean-100 px-3 py-1 text-sm font-black text-ocean-600">
-                  {item.price}
-                </span>
+            <article className="overflow-hidden rounded-lg border border-ocean-100 bg-white shadow-sm" key={item.name}>
+              <img className="h-52 w-full object-cover" src={item.image} alt={item.alt} loading="lazy" />
+              <div className="p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="text-2xl font-black text-slate-950">{item.name}</h3>
+                  <span className="shrink-0 rounded-full bg-ocean-100 px-3 py-1 text-sm font-black text-ocean-600">
+                    {item.price}
+                  </span>
+                </div>
+                <p className="mt-5 leading-7 text-slate-600">{item.note}</p>
               </div>
-              <p className="mt-5 leading-7 text-slate-600">{item.note}</p>
             </article>
           ))}
         </div>
