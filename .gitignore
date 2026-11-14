@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.tmp/
+.pnpm-home/
+.pnpm-store/
+*.log
+LG_Vibe_Coding_Version 3November2026.pdf
+assets/
+kopi-co-preview.png
+tmp/
