@@ -7,7 +7,19 @@ A warm, modern single-page website for **Blue Ocean Kopi & Co.**, a neighbourhoo
 - Vite
 - React
 - Tailwind CSS
+- Supabase Auth
 - lucide-react icons
+
+## Supabase
+
+Copy `.env.example` to `.env.local`, then add your Supabase publishable key.
+
+```bash
+VITE_SUPABASE_URL=https://zfchieymyntbmpiyixjo.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-public-key-here
+```
+
+See `SUPABASE_SETUP.md` for email verification and member/staff profile setup.
 
 ## Run Locally
 

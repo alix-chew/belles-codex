@@ -2,12 +2,31 @@ import {
   ArrowRight,
   Clock3,
   Leaf,
+  LogOut,
   MapPin,
+  MailCheck,
   Menu as MenuIcon,
+  ShieldCheck,
   Sprout,
+  UserRound,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { isSupabaseConfigured, supabase, supabaseProjectUrl } from "./lib/supabase";
 
-const navItems = ["About", "Menu", "Contact"];
+const navItems = ["About", "Menu", "Contact", "Login"];
+
+const accountTypes = [
+  {
+    value: "member",
+    label: "Member",
+    detail: "Order kopi, save favourites, and request bookings.",
+  },
+  {
+    value: "staff",
+    label: "Staff",
+    detail: "Access cafe records after an admin approves the role.",
+  },
+];
 
 // Menu data is kept as structured content so new pages can reuse it later.
 const menuItems = [
@@ -51,6 +70,7 @@ export default function App() {
         <About />
         <MenuPreview />
         <Contact />
+        <AuthSection />
         <DesignReference />
       </main>
     </div>
@@ -250,6 +270,279 @@ function Contact() {
         </div>
       </div>
     </section>
+  );
+}
+
+function AuthSection() {
+  const [mode, setMode] = useState("signup");
+  const [role, setRole] = useState("member");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [status, setStatus] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!supabase || !session?.user) {
+      setProfile(null);
+      return;
+    }
+
+    let isCurrent = true;
+
+    async function loadProfile() {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (!isCurrent) return;
+
+      if (error) {
+        setProfile({
+          full_name: session.user.user_metadata?.full_name || session.user.email,
+          role: session.user.user_metadata?.role || "member",
+        });
+        return;
+      }
+
+      setProfile(data);
+    }
+
+    loadProfile();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [session]);
+
+  const activeRole = profile?.role || session?.user?.user_metadata?.role || "member";
+  const displayName = profile?.full_name || session?.user?.user_metadata?.full_name || session?.user?.email;
+
+  async function handleAuthSubmit(event) {
+    event.preventDefault();
+
+    if (!supabase) {
+      setStatus("Add your Supabase publishable key first, then restart the dev server.");
+      return;
+    }
+
+    setIsBusy(true);
+    setStatus("");
+
+    const credentials = {
+      email,
+      password,
+    };
+
+    const { error } =
+      mode === "signup"
+        ? await supabase.auth.signUp({
+            ...credentials,
+            options: {
+              data: {
+                full_name: fullName,
+                role,
+              },
+              emailRedirectTo: `${window.location.origin}/#login`,
+            },
+          })
+        : await supabase.auth.signInWithPassword(credentials);
+
+    setIsBusy(false);
+
+    if (error) {
+      setStatus(error.message);
+      return;
+    }
+
+    setStatus(
+      mode === "signup"
+        ? "Account created. Please check your email and confirm before signing in."
+        : "Signed in successfully."
+    );
+  }
+
+  async function handleSignOut() {
+    if (!supabase) return;
+
+    await supabase.auth.signOut();
+    setStatus("Signed out.");
+  }
+
+  return (
+    <section id="login" className="bg-white px-5 py-20 md:px-8">
+      <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-start">
+        <div>
+          <p className="mb-3 text-sm font-black uppercase text-ocean-600">Member & staff login</p>
+          <h2 className="text-4xl font-black leading-tight text-slate-950 md:text-5xl">
+            Confirm by email, then come inside.
+          </h2>
+          <p className="mt-5 max-w-xl leading-7 text-slate-600">
+            Supabase handles the account emails. Members can sign up for ordering and bookings, while staff accounts can be approved for cafe admin work.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-ocean-100 bg-ocean-50 p-6 shadow-sm">
+          {!isSupabaseConfigured && (
+            <div className="mb-5 rounded-lg border border-ocean-100 bg-white p-4 text-sm leading-6 text-slate-600">
+              <strong className="block text-slate-950">Supabase key needed</strong>
+              Add <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> for project <code>{supabaseProjectUrl}</code>.
+            </div>
+          )}
+
+          {session ? (
+            <div>
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-leaf-700 text-white">
+                  {activeRole === "staff" ? <ShieldCheck size={22} /> : <UserRound size={22} />}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-950">Welcome, {displayName}</h3>
+                  <p className="mt-1 text-slate-600">Signed in as {activeRole}.</p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <AccountPanel
+                  title="Member area"
+                  text="Ready for online ordering, saved menu favourites, and table booking requests."
+                />
+                {activeRole === "staff" && (
+                  <AccountPanel
+                    title="Staff admin"
+                    text="Staff-only space for managing menu updates, orders, and booking records."
+                  />
+                )}
+              </div>
+
+              <button
+                className="mt-6 inline-flex items-center gap-2 rounded-lg border border-ocean-100 bg-white px-5 py-3 font-black text-ocean-600 hover:bg-ocean-100"
+                type="button"
+                onClick={handleSignOut}
+              >
+                <LogOut size={18} /> Sign out
+              </button>
+            </div>
+          ) : (
+            <form className="grid gap-4" onSubmit={handleAuthSubmit}>
+              <div className="inline-grid grid-cols-2 rounded-lg bg-white p-1">
+                {["signup", "signin"].map((item) => (
+                  <button
+                    className={`rounded-md px-4 py-3 text-sm font-black ${
+                      mode === item ? "bg-ocean-600 text-white" : "text-slate-600"
+                    }`}
+                    key={item}
+                    type="button"
+                    onClick={() => setMode(item)}
+                  >
+                    {item === "signup" ? "Create account" : "Sign in"}
+                  </button>
+                ))}
+              </div>
+
+              {mode === "signup" && (
+                <>
+                  <label className="grid gap-2 text-sm font-black text-slate-950">
+                    Full name
+                    <input
+                      className="rounded-lg border border-ocean-100 bg-white px-4 py-3 font-normal text-slate-700 outline-none focus:border-ocean-600"
+                      type="text"
+                      value={fullName}
+                      onChange={(event) => setFullName(event.target.value)}
+                      placeholder="Your name"
+                    />
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {accountTypes.map((type) => (
+                      <label
+                        className={`cursor-pointer rounded-lg border bg-white p-4 ${
+                          role === type.value ? "border-ocean-600 ring-2 ring-ocean-100" : "border-ocean-100"
+                        }`}
+                        key={type.value}
+                      >
+                        <input
+                          className="sr-only"
+                          type="radio"
+                          name="role"
+                          value={type.value}
+                          checked={role === type.value}
+                          onChange={() => setRole(type.value)}
+                        />
+                        <span className="font-black text-slate-950">{type.label}</span>
+                        <span className="mt-2 block text-sm leading-6 text-slate-600">{type.detail}</span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <label className="grid gap-2 text-sm font-black text-slate-950">
+                Email
+                <input
+                  className="rounded-lg border border-ocean-100 bg-white px-4 py-3 font-normal text-slate-700 outline-none focus:border-ocean-600"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  required
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-black text-slate-950">
+                Password
+                <input
+                  className="rounded-lg border border-ocean-100 bg-white px-4 py-3 font-normal text-slate-700 outline-none focus:border-ocean-600"
+                  type="password"
+                  minLength={6}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="At least 6 characters"
+                  required
+                />
+              </label>
+
+              <button
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-leaf-700 px-5 py-4 font-black text-white shadow-sm hover:bg-leaf-500 disabled:cursor-not-allowed disabled:opacity-60"
+                type="submit"
+                disabled={isBusy || !isSupabaseConfigured}
+              >
+                <MailCheck size={18} /> {mode === "signup" ? "Send confirmation email" : "Sign in"}
+              </button>
+
+              {status && <p className="rounded-lg bg-white p-4 text-sm leading-6 text-slate-600">{status}</p>}
+            </form>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AccountPanel({ title, text }) {
+  return (
+    <article className="rounded-lg border border-ocean-100 bg-white p-5">
+      <h3 className="font-black text-slate-950">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+    </article>
   );
 }
 

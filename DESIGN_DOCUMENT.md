@@ -12,6 +12,7 @@ The latest build follows the attached specification photo:
 - Include an About Us section
 - Include a Menu Preview section with prices in Singapore dollars
 - Include a Contact Us section with address and opening hours
+- Include Supabase-powered member and staff login with email confirmation
 - Use grey, light blue, and green colours for the UI/UX
 - Start a development server for preview
 
@@ -60,6 +61,17 @@ Why it was chosen:
 - Keeps icons consistent
 - Avoids custom SVG drawing inside components
 
+### Supabase Auth
+
+Supabase Auth is used for the member and staff login flow.
+
+Why it was chosen:
+
+- Provides email/password sign-up and sign-in without building a custom auth server
+- Supports email confirmation for new accounts
+- Fits a Vite and React front end through the official `@supabase/supabase-js` client
+- Can be extended later for online ordering, table bookings, and staff-only admin records
+
 ### PDF-Derived Images
 
 The older generated bitmap files were removed. The current site uses cropped images rendered from the assignment PDF and stored in `public/images/`.
@@ -84,6 +96,8 @@ vite.config.js
 src/
   App.jsx
   index.css
+  lib/
+    supabase.js
   main.jsx
 public/
   images/
@@ -91,8 +105,10 @@ public/
     codex-build-reference.png
 scripts/
   extract_pdf_assets.py
+.env.example
 README.md
 DESIGN_DOCUMENT.md
+SUPABASE_SETUP.md
 ```
 
 ## 4. Brand Direction
@@ -156,7 +172,8 @@ The single-page website contains:
 3. About Us
 4. Menu Preview
 5. Contact Us
-6. Build Reference section
+6. Member and staff login
+7. Build Reference section
 
 ### Header
 
@@ -200,6 +217,7 @@ Each item has:
 
 - Name
 - Price in Singapore dollars
+- Preview image
 - Short description
 
 ### Contact Us
@@ -211,6 +229,28 @@ The contact section includes:
   - Mon-Fri: 7:30 AM - 8:30 PM
   - Sat-Sun: 8:00 AM - 9:00 PM
 
+### Member and Staff Login
+
+The login section uses Supabase Auth.
+
+It includes:
+
+- Create account / sign in mode switch
+- Email and password fields
+- Member or staff account choice during sign-up
+- Email confirmation message after account creation
+- Signed-in member panel
+- Staff admin panel shown only when the profile role is `staff`
+
+Supabase configuration is kept outside source code through Vite environment variables:
+
+```env
+VITE_SUPABASE_URL=https://zfchieymyntbmpiyixjo.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-public-key-here
+```
+
+The public key is intentionally not committed. Setup steps live in `SUPABASE_SETUP.md`.
+
 ## 8. Component Choices
 
 The React app is split into logical components inside `src/App.jsx`:
@@ -221,6 +261,8 @@ The React app is split into logical components inside `src/App.jsx`:
 - `InfoCard`
 - `MenuPreview`
 - `Contact`
+- `AuthSection`
+- `AccountPanel`
 - `DesignReference`
 
 This keeps the project easy to read while avoiding too many files for a small assignment website.
@@ -242,6 +284,7 @@ To add more pages later:
 6. Use light blue or soft grey for section backgrounds.
 7. Put reusable data such as menu items into arrays.
 8. Keep local images under `public/images/`.
+9. Keep Supabase keys in `.env.local`, not in committed files.
 
 Suggested future sections:
 
@@ -251,6 +294,8 @@ Suggested future sections:
 - Loyalty page
 - Online ordering prototype
 - Booking form
+- Member order history
+- Staff order dashboard
 
 ## 10. QA Notes
 
@@ -260,6 +305,7 @@ Verified on 14 November 2026:
 - Vite production build passed
 - React app compiled successfully
 - Tailwind CSS compiled through `@tailwindcss/vite`
+- Supabase client added through `@supabase/supabase-js`
 - PDF-derived images were used instead of generated bitmaps
 - Old bitmap generator and generated BMP assets were removed
 

@@ -1,5 +1,8 @@
 node_modules/
 dist/
+.env
+.env.local
+.env.*.local
 .tmp/
 .pnpm-home/
 .pnpm-store/
