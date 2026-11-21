@@ -1,54 +1,84 @@
 import {
   ArrowRight,
+  ClipboardList,
   Clock3,
+  Crown,
   Leaf,
+  LockKeyhole,
   LogOut,
   MapPin,
   MailCheck,
   Menu as MenuIcon,
   ShieldCheck,
+  ShoppingBag,
   Sprout,
   UserRound,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabase, supabaseProjectUrl } from "./lib/supabase";
 
-const navItems = ["About", "Menu", "Contact", "Login"];
+const navItems = ["About", "Menu", "Order", "Contact", "Login"];
 
 const accountTypes = [
   {
-    value: "member",
-    label: "Member",
-    detail: "Order kopi, save favourites, and request bookings.",
+    value: "customer",
+    label: "Customer",
+    detail: "Public customer account for purchases, favourites, and bookings.",
   },
   {
     value: "staff",
     label: "Staff",
-    detail: "Access cafe records after an admin approves the role.",
+    detail: "Cafe counter account for viewing order and booking records.",
+  },
+  {
+    value: "manager",
+    label: "Manager",
+    detail: "Manager account for daily operations and menu updates.",
+  },
+  {
+    value: "owner",
+    label: "Owner",
+    detail: "Owner account for full site and business control.",
   },
 ];
+
+const roleLabels = {
+  customer: "Customer",
+  staff: "Staff",
+  manager: "Manager",
+  owner: "Owner",
+};
+
+const adminRoles = ["staff", "manager", "owner"];
+const managerRoles = ["manager", "owner"];
 
 // Menu data is kept as structured content so new pages can reuse it later.
 const menuItems = [
   {
+    id: "signature-kopi",
     name: "Signature Kopi",
     price: "S$3.80",
+    priceValue: 3.8,
     note: "Nanyang-style kopi with oat milk and a caramelised aroma.",
     image:
       "https://www.visitsingapore.com/vi_vn/things-to-do/dining/local-food-and-drinks/_jcr_content/root/responsivegrid/containercomponent_c/par/columncntrl/par1/image.img.jpeg/1772172552090/kopi-1148x1000.jpeg",
     alt: "A white ceramic cup of Singapore kopi on a saucer.",
   },
   {
+    id: "kaya-toast-set",
     name: "Kaya Toast Set",
     price: "S$6.90",
+    priceValue: 6.9,
     note: "Plant-based kaya, coconut spread, seeded toast, and kopi.",
     image:
       "https://dam.mediacorp.sg/image/upload/s--7BDWriAF--/c_fill%2Cg_auto/f_auto%2Cq_auto/v1/8world/images/2026/03/30/20260330_ls_peh-gao-kaya-toast-set.jpg?itok=6vK5eIr8",
     alt: "Kaya toast breakfast set with soft-boiled egg and kopi.",
   },
   {
+    id: "uncles-laksa",
     name: "Uncle's Laksa",
     price: "S$9.80",
+    priceValue: 9.8,
     note: "A creamy, plant-based laksa with tofu puffs and herbs.",
     image:
       "https://static.wixstatic.com/media/60409b_8a81539615af4d6ba2270331c04a4f29~mv2.jpg/v1/fill/w_980%2Ch_735%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/60409b_8a81539615af4d6ba2270331c04a4f29~mv2.jpg",
@@ -62,22 +92,86 @@ const openingHours = [
 ];
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!supabase || !session?.user) {
+      setProfile(null);
+      return undefined;
+    }
+
+    let isCurrent = true;
+
+    async function loadProfile() {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (!isCurrent) return;
+
+      if (error) {
+        setProfile({
+          full_name: session.user.user_metadata?.full_name || session.user.email,
+          role: session.user.user_metadata?.role || "customer",
+        });
+        return;
+      }
+
+      setProfile(data);
+    }
+
+    loadProfile();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [session]);
+
+  const activeRole = profile?.role || session?.user?.user_metadata?.role || "customer";
+  const displayName = profile?.full_name || session?.user?.user_metadata?.full_name || session?.user?.email;
+
   return (
     <div className="min-h-screen bg-ocean-50 text-slate-900">
-      <Header />
+      <Header session={session} />
       <main>
         <Hero />
         <About />
         <MenuPreview />
+        <OrderSection session={session} activeRole={activeRole} displayName={displayName} />
         <Contact />
-        <AuthSection />
+        <AuthSection
+          session={session}
+          profile={profile}
+          activeRole={activeRole}
+          displayName={displayName}
+          setProfile={setProfile}
+        />
         <DesignReference />
       </main>
     </div>
   );
 }
 
-function Header() {
+function Header({ session }) {
   return (
     <header className="sticky top-0 z-30 border-b border-ocean-100 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 md:px-8">
@@ -105,9 +199,9 @@ function Header() {
 
         <a
           className="hidden items-center gap-2 rounded-lg bg-leaf-700 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-leaf-500 sm:flex"
-          href="#contact"
+          href="#login"
         >
-          Visit us <ArrowRight size={17} />
+          {session ? "Account" : "Log in"} <ArrowRight size={17} />
         </a>
 
         <button
@@ -139,9 +233,9 @@ function Hero() {
           <div className="mt-8 flex flex-wrap gap-3">
             <a
               className="inline-flex items-center gap-2 rounded-lg bg-leaf-700 px-6 py-4 font-black text-white shadow-lg shadow-leaf-700/15 hover:bg-leaf-500"
-              href="#menu"
+              href="#order"
             >
-              View menu <ArrowRight size={18} />
+              Order online <ArrowRight size={18} />
             </a>
             <a
               className="inline-flex items-center rounded-lg border border-ocean-100 bg-white px-6 py-4 font-black text-ocean-600 hover:bg-ocean-50"
@@ -243,6 +337,147 @@ function MenuPreview() {
   );
 }
 
+function OrderSection({ session, activeRole, displayName }) {
+  const [selectedItemId, setSelectedItemId] = useState(menuItems[0].id);
+  const [quantity, setQuantity] = useState(1);
+  const [orderStatus, setOrderStatus] = useState("");
+  const [isOrdering, setIsOrdering] = useState(false);
+  const selectedItem = menuItems.find((item) => item.id === selectedItemId) || menuItems[0];
+  const total = selectedItem.priceValue * quantity;
+
+  async function handleOrderSubmit(event) {
+    event.preventDefault();
+
+    if (!session?.user) {
+      setOrderStatus("Please log in before making a purchase.");
+      return;
+    }
+
+    setIsOrdering(true);
+    setOrderStatus("");
+
+    const orderPayload = {
+      user_id: session.user.id,
+      item_id: selectedItem.id,
+      item_name: selectedItem.name,
+      quantity,
+      total_sgd: Number(total.toFixed(2)),
+      status: "pending",
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("orders").insert(orderPayload);
+
+      setIsOrdering(false);
+
+      if (error) {
+        setOrderStatus(`Order could not be saved yet: ${error.message}`);
+        return;
+      }
+
+      setOrderStatus("Order received. Staff will prepare it shortly.");
+      return;
+    }
+
+    setIsOrdering(false);
+    setOrderStatus("Supabase key needed before live purchases can be saved.");
+  }
+
+  return (
+    <section id="order" className="bg-white px-5 py-20 md:px-8">
+      <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[0.85fr_1.15fr] md:items-start">
+        <div>
+          <p className="mb-3 text-sm font-black uppercase text-ocean-600">Order page</p>
+          <h2 className="text-4xl font-black leading-tight text-slate-950 md:text-5xl">
+            Log in before you purchase.
+          </h2>
+          <p className="mt-5 max-w-xl leading-7 text-slate-600">
+            Public customers, staff, managers, and the owner all enter through Supabase login. Purchases unlock only after the account is confirmed and signed in.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-ocean-100 bg-ocean-50 p-6 shadow-sm">
+          {!session ? (
+            <div>
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ocean-600 text-white">
+                  <LockKeyhole size={22} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-950">Purchases are login-gated</h3>
+                  <p className="mt-2 leading-7 text-slate-600">
+                    Create an account or sign in first. Supabase email confirmation protects the checkout flow.
+                  </p>
+                </div>
+              </div>
+              <a
+                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-leaf-700 px-5 py-3 font-black text-white hover:bg-leaf-500"
+                href="#login"
+              >
+                Log in to purchase <ArrowRight size={18} />
+              </a>
+            </div>
+          ) : (
+            <form className="grid gap-5" onSubmit={handleOrderSubmit}>
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-leaf-700 text-white">
+                  <ShoppingBag size={22} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-950">Ready to order, {displayName}</h3>
+                  <p className="mt-1 text-slate-600">Signed in as {roleLabels[activeRole] || activeRole}.</p>
+                </div>
+              </div>
+
+              <label className="grid gap-2 text-sm font-black text-slate-950">
+                Choose item
+                <select
+                  className="rounded-lg border border-ocean-100 bg-white px-4 py-3 font-normal text-slate-700 outline-none focus:border-ocean-600"
+                  value={selectedItemId}
+                  onChange={(event) => setSelectedItemId(event.target.value)}
+                >
+                  {menuItems.map((item) => (
+                    <option value={item.id} key={item.id}>
+                      {item.name} - {item.price}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-black text-slate-950">
+                Quantity
+                <input
+                  className="rounded-lg border border-ocean-100 bg-white px-4 py-3 font-normal text-slate-700 outline-none focus:border-ocean-600"
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={quantity}
+                  onChange={(event) => setQuantity(Number(event.target.value))}
+                />
+              </label>
+
+              <div className="rounded-lg border border-ocean-100 bg-white p-5">
+                <p className="text-sm font-black uppercase text-ocean-600">Order total</p>
+                <p className="mt-2 text-3xl font-black text-slate-950">S${total.toFixed(2)}</p>
+              </div>
+
+              <button
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-leaf-700 px-5 py-4 font-black text-white shadow-sm hover:bg-leaf-500 disabled:cursor-not-allowed disabled:opacity-60"
+                type="submit"
+                disabled={isOrdering}
+              >
+                <ShoppingBag size={18} /> Place purchase request
+              </button>
+
+              {orderStatus && <p className="rounded-lg bg-white p-4 text-sm leading-6 text-slate-600">{orderStatus}</p>}
+            </form>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Contact() {
   return (
     <section id="contact" className="bg-ocean-600 px-5 py-20 text-white md:px-8">
@@ -273,70 +508,16 @@ function Contact() {
   );
 }
 
-function AuthSection() {
+function AuthSection({ session, profile, activeRole, displayName, setProfile }) {
   const [mode, setMode] = useState("signup");
-  const [role, setRole] = useState("member");
+  const [role, setRole] = useState("customer");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
   const [status, setStatus] = useState("");
   const [isBusy, setIsBusy] = useState(false);
-
-  useEffect(() => {
-    if (!supabase) return undefined;
-
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!supabase || !session?.user) {
-      setProfile(null);
-      return;
-    }
-
-    let isCurrent = true;
-
-    async function loadProfile() {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("full_name, role")
-        .eq("id", session.user.id)
-        .maybeSingle();
-
-      if (!isCurrent) return;
-
-      if (error) {
-        setProfile({
-          full_name: session.user.user_metadata?.full_name || session.user.email,
-          role: session.user.user_metadata?.role || "member",
-        });
-        return;
-      }
-
-      setProfile(data);
-    }
-
-    loadProfile();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [session]);
-
-  const activeRole = profile?.role || session?.user?.user_metadata?.role || "member";
-  const displayName = profile?.full_name || session?.user?.user_metadata?.full_name || session?.user?.email;
+  const isAdmin = adminRoles.includes(activeRole);
+  const isManager = managerRoles.includes(activeRole);
 
   async function handleAuthSubmit(event) {
     event.preventDefault();
@@ -386,6 +567,7 @@ function AuthSection() {
     if (!supabase) return;
 
     await supabase.auth.signOut();
+    setProfile(null);
     setStatus("Signed out.");
   }
 
@@ -393,12 +575,12 @@ function AuthSection() {
     <section id="login" className="bg-white px-5 py-20 md:px-8">
       <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-start">
         <div>
-          <p className="mb-3 text-sm font-black uppercase text-ocean-600">Member & staff login</p>
+          <p className="mb-3 text-sm font-black uppercase text-ocean-600">Supabase login</p>
           <h2 className="text-4xl font-black leading-tight text-slate-950 md:text-5xl">
-            Confirm by email, then come inside.
+            One account door for every role.
           </h2>
           <p className="mt-5 max-w-xl leading-7 text-slate-600">
-            Supabase handles the account emails. Members can sign up for ordering and bookings, while staff accounts can be approved for cafe admin work.
+            Public customers, staff, managers, and the owner log in here. New accounts receive a Supabase confirmation email before they can purchase or manage records.
           </p>
         </div>
 
@@ -414,23 +596,45 @@ function AuthSection() {
             <div>
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-leaf-700 text-white">
-                  {activeRole === "staff" ? <ShieldCheck size={22} /> : <UserRound size={22} />}
+                  {activeRole === "owner" ? (
+                    <Crown size={22} />
+                  ) : isAdmin ? (
+                    <ShieldCheck size={22} />
+                  ) : (
+                    <UserRound size={22} />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-2xl font-black text-slate-950">Welcome, {displayName}</h3>
-                  <p className="mt-1 text-slate-600">Signed in as {activeRole}.</p>
+                  <p className="mt-1 text-slate-600">Signed in as {roleLabels[activeRole] || activeRole}.</p>
                 </div>
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <AccountPanel
-                  title="Member area"
-                  text="Ready for online ordering, saved menu favourites, and table booking requests."
+                  icon={<ShoppingBag size={18} />}
+                  title="Customer purchases"
+                  text="Order kopi, save favourites, and request table bookings."
                 />
-                {activeRole === "staff" && (
+                {isAdmin && (
                   <AccountPanel
-                    title="Staff admin"
-                    text="Staff-only space for managing menu updates, orders, and booking records."
+                    icon={<ClipboardList size={18} />}
+                    title="Staff records"
+                    text="View order requests, booking records, and daily cafe work."
+                  />
+                )}
+                {isManager && (
+                  <AccountPanel
+                    icon={<ShieldCheck size={18} />}
+                    title="Manager tools"
+                    text="Manage menu updates, order status, and staff workflows."
+                  />
+                )}
+                {activeRole === "owner" && (
+                  <AccountPanel
+                    icon={<Crown size={18} />}
+                    title="Owner control"
+                    text="Full business overview for accounts, staff roles, and site settings."
                   />
                 )}
               </div>
@@ -537,9 +741,14 @@ function AuthSection() {
   );
 }
 
-function AccountPanel({ title, text }) {
+function AccountPanel({ icon, title, text }) {
   return (
     <article className="rounded-lg border border-ocean-100 bg-white p-5">
+      {icon && (
+        <div className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-ocean-100 text-ocean-600">
+          {icon}
+        </div>
+      )}
       <h3 className="font-black text-slate-950">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
     </article>

@@ -44,7 +44,7 @@ http://localhost:5173/**
 https://your-vercel-domain.vercel.app/**
 ```
 
-## 3. Add member and staff profiles
+## 3. Add customer, staff, manager, and owner profiles
 
 Run this in the Supabase SQL editor:
 
@@ -52,7 +52,7 @@ Run this in the Supabase SQL editor:
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
-  role text not null default 'member' check (role in ('member', 'staff')),
+  role text not null default 'customer' check (role in ('customer', 'staff', 'manager', 'owner')),
   created_at timestamptz not null default now()
 );
 
@@ -82,7 +82,7 @@ begin
   values (
     new.id,
     new.raw_user_meta_data ->> 'full_name',
-    coalesce(new.raw_user_meta_data ->> 'role', 'member')
+    coalesce(new.raw_user_meta_data ->> 'role', 'customer')
   );
 
   return new;
@@ -96,6 +96,63 @@ after insert on auth.users
 for each row execute procedure public.create_profile_for_new_user();
 ```
 
-## 4. Staff safety note
+## 4. Add login-gated purchase records
 
-The sign-up form lets a user request a `staff` role for the assignment demo. For a real cafe, staff access should be approved by the owner in Supabase by changing `public.profiles.role` from `member` to `staff`.
+Run this after the profiles table:
+
+```sql
+create table if not exists public.orders (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  item_id text not null,
+  item_name text not null,
+  quantity integer not null check (quantity > 0 and quantity <= 12),
+  total_sgd numeric(10, 2) not null check (total_sgd >= 0),
+  status text not null default 'pending' check (status in ('pending', 'preparing', 'ready', 'completed', 'cancelled')),
+  created_at timestamptz not null default now()
+);
+
+alter table public.orders enable row level security;
+
+create policy "Customers can create their own orders"
+on public.orders
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "Customers can read their own orders"
+on public.orders
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "Staff managers and owner can read all orders"
+on public.orders
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles
+    where profiles.id = auth.uid()
+      and profiles.role in ('staff', 'manager', 'owner')
+  )
+);
+
+create policy "Managers and owner can update order status"
+on public.orders
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles
+    where profiles.id = auth.uid()
+      and profiles.role in ('manager', 'owner')
+  )
+);
+```
+
+## 5. Role safety note
+
+The sign-up form lets a user request `customer`, `staff`, `manager`, or `owner` for the assignment demo. For a real cafe, public sign-up should default to `customer`; staff, manager, and owner access should be approved by the owner in Supabase by changing `public.profiles.role`.

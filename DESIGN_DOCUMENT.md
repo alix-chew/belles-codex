@@ -12,7 +12,8 @@ The latest build follows the attached specification photo:
 - Include an About Us section
 - Include a Menu Preview section with prices in Singapore dollars
 - Include a Contact Us section with address and opening hours
-- Include Supabase-powered member and staff login with email confirmation
+- Include Supabase-powered customer, staff, manager, and owner login with email confirmation
+- Require login before purchase requests
 - Use grey, light blue, and green colours for the UI/UX
 - Start a development server for preview
 
@@ -63,14 +64,14 @@ Why it was chosen:
 
 ### Supabase Auth
 
-Supabase Auth is used for the member and staff login flow.
+Supabase Auth is used for the customer, staff, manager, and owner login flow.
 
 Why it was chosen:
 
 - Provides email/password sign-up and sign-in without building a custom auth server
 - Supports email confirmation for new accounts
 - Fits a Vite and React front end through the official `@supabase/supabase-js` client
-- Can be extended later for online ordering, table bookings, and staff-only admin records
+- Supports login-gated purchase requests, table bookings, and role-based staff/manager/owner records
 
 ### PDF-Derived Images
 
@@ -171,9 +172,10 @@ The single-page website contains:
 2. Main banner / hero
 3. About Us
 4. Menu Preview
-5. Contact Us
-6. Member and staff login
-7. Build Reference section
+5. Login-gated Order page
+6. Contact Us
+7. Customer, staff, manager, and owner login
+8. Build Reference section
 
 ### Header
 
@@ -183,7 +185,7 @@ The header includes:
 - Cafe name
 - Short descriptor
 - Navigation links
-- Visit Us action button
+- Log In / Account action button
 
 ### Main Banner
 
@@ -220,6 +222,25 @@ Each item has:
 - Preview image
 - Short description
 
+### Order Page
+
+Purchases are protected by Supabase login.
+
+Guest visitors see:
+
+- A locked purchase message
+- A clear button to log in
+- Explanation that email confirmation protects checkout
+
+Signed-in users see:
+
+- Menu item selector
+- Quantity field
+- Order total in Singapore dollars
+- Purchase request button
+
+When Supabase is configured and the `orders` table exists, purchase requests are saved to Supabase.
+
 ### Contact Us
 
 The contact section includes:
@@ -229,7 +250,7 @@ The contact section includes:
   - Mon-Fri: 7:30 AM - 8:30 PM
   - Sat-Sun: 8:00 AM - 9:00 PM
 
-### Member and Staff Login
+### Customer, Staff, Manager, and Owner Login
 
 The login section uses Supabase Auth.
 
@@ -237,10 +258,12 @@ It includes:
 
 - Create account / sign in mode switch
 - Email and password fields
-- Member or staff account choice during sign-up
+- Customer, staff, manager, or owner account choice during sign-up
 - Email confirmation message after account creation
-- Signed-in member panel
-- Staff admin panel shown only when the profile role is `staff`
+- Signed-in customer purchase panel
+- Staff records panel for `staff`, `manager`, and `owner`
+- Manager tools panel for `manager` and `owner`
+- Owner control panel for `owner`
 
 Supabase configuration is kept outside source code through Vite environment variables:
 
@@ -260,6 +283,7 @@ The React app is split into logical components inside `src/App.jsx`:
 - `About`
 - `InfoCard`
 - `MenuPreview`
+- `OrderSection`
 - `Contact`
 - `AuthSection`
 - `AccountPanel`
@@ -293,9 +317,12 @@ Suggested future sections:
 - Plant-based ingredient story
 - Loyalty page
 - Online ordering prototype
+- Payment integration
 - Booking form
-- Member order history
+- Customer order history
 - Staff order dashboard
+- Manager operations dashboard
+- Owner settings dashboard
 
 ## 10. QA Notes
 
@@ -306,6 +333,7 @@ Verified on 14 November 2026:
 - React app compiled successfully
 - Tailwind CSS compiled through `@tailwindcss/vite`
 - Supabase client added through `@supabase/supabase-js`
+- Login-gated order page added for purchase requests
 - PDF-derived images were used instead of generated bitmaps
 - Old bitmap generator and generated BMP assets were removed
 
