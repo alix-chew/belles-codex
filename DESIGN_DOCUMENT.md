@@ -191,6 +191,7 @@ The home page includes:
 - Clear action button linking to the Menu page
 - PDF-derived kopi/toast visual
 - Menu preview cards
+- Contact block with address and opening hours
 
 Preview cards link directly to the matching item on the Menu page.
 
@@ -211,6 +212,8 @@ The required menu items are:
 - Signature Kopi - `S$3.80`
 - Kaya Toast Set - `S$6.90`
 - Uncle's Laksa - `S$9.80`
+- Signature Teh - `S$3.80`
+- Auntie's Mee Siam - `S$9.80`
 
 Each item has:
 
@@ -224,9 +227,9 @@ Each item has:
 
 Ordering lives on the Menu page. Guests who click to order are sent to the Login page. Signed-in customers can submit purchase requests to Supabase when the `orders` table exists.
 
-### Contact Page
+### Contact Block / Contact Page
 
-The Contact page includes:
+The Contact content appears on the Home page and as a separate Contact page. It includes:
 
 - Address: YKK Street, Singapore
 - Opening hours:

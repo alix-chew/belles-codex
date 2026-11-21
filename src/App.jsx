@@ -64,6 +64,24 @@ const menuItems = [
       "https://static.wixstatic.com/media/60409b_8a81539615af4d6ba2270331c04a4f29~mv2.jpg/v1/fill/w_980%2Ch_735%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/60409b_8a81539615af4d6ba2270331c04a4f29~mv2.jpg",
     alt: "A bowl of Nyonya laksa with tofu puffs, prawns, fish cake and herbs.",
   },
+  {
+    id: "signature-teh",
+    name: "Signature Teh",
+    price: "S$3.80",
+    priceValue: 3.8,
+    note: "Silky Singapore-style milk tea with a smooth, lightly frothy finish.",
+    image: "https://silveractivities.com/assets/images/singapore-drinks/teh.png",
+    alt: "A cup of Singapore teh milk tea on a saucer with an orange spoon.",
+  },
+  {
+    id: "aunties-mee-siam",
+    name: "Auntie's Mee Siam",
+    price: "S$9.80",
+    priceValue: 9.8,
+    note: "Tangy, spicy mee siam with rice vermicelli, tofu puffs, egg, and calamansi.",
+    image: "https://cdn.shopify.com/s/files/1/0351/4636/7111/t/8/assets/pf-c605cdf2--Mee-Siam-Square.jpg?v=1587747219",
+    alt: "A bowl of mee siam with rice vermicelli, egg, tofu puffs, greens and calamansi.",
+  },
 ];
 
 const openingHours = [
@@ -235,6 +253,7 @@ function HomePage() {
     <>
       <Hero />
       <MenuPreview />
+      <ContactPage />
     </>
   );
 }
@@ -298,7 +317,7 @@ function MenuPreview() {
           </p>
         </div>
         <div className="grid gap-5 md:grid-cols-3">
-          {menuItems.map((item) => (
+          {menuItems.slice(0, 3).map((item) => (
             <a
               className="rounded-lg border border-ocean-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               href={`#/menu/${item.id}`}
