@@ -567,7 +567,7 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
       password,
     };
 
-    const { error } =
+    const { data, error } =
       mode === "signup"
         ? await supabase.auth.signUp({
             ...credentials,
@@ -592,14 +592,29 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
       setFullName("");
       setEmail("");
       setPassword("");
-      setStatus({
-        tone: "success",
-        message: "Registration submitted. Please check your email for the confirmation link before signing in.",
-      });
+      if (!data.session) {
+        const { error: signInError } = await supabase.auth.signInWithPassword(credentials);
+
+        if (signInError) {
+          setStatus({
+            tone: "success",
+            message: "Account created. You can sign in now.",
+          });
+          return;
+        }
+      }
+
+      setStatus({ tone: "success", message: "Account created. Taking you back to the home page." });
+      window.setTimeout(() => {
+        window.location.hash = "#/";
+      }, 600);
       return;
     }
 
-    setStatus({ tone: "success", message: "Signed in successfully." });
+    setStatus({ tone: "success", message: "Signed in. Taking you back to the home page." });
+    window.setTimeout(() => {
+      window.location.hash = "#/";
+    }, 600);
   }
 
   async function handleSignOut() {
@@ -619,7 +634,7 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
             Log in or create an account.
           </h1>
           <p className="mt-5 max-w-xl leading-7 text-slate-600">
-            Sign in to order online, save your favourites, and request table bookings. New customer accounts receive a confirmation email.
+            Sign in to order online, save your favourites, and request table bookings.
           </p>
         </div>
 
@@ -739,7 +754,7 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
                 type="submit"
                 disabled={isBusy || !isSupabaseConfigured}
               >
-                <MailCheck size={18} /> {mode === "signup" ? "Send confirmation email" : "Sign in"}
+                <MailCheck size={18} /> {mode === "signup" ? "Create account" : "Sign in"}
               </button>
 
               {status.message && (
