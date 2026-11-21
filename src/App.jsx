@@ -546,7 +546,7 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState({ tone: "info", message: "" });
   const [isBusy, setIsBusy] = useState(false);
   const isTeam = teamRoles.includes(activeRole);
   const isLeadership = leadershipRoles.includes(activeRole);
@@ -555,12 +555,12 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
     event.preventDefault();
 
     if (!supabase) {
-      setStatus("Login is not ready yet. Please try again later.");
+      setStatus({ tone: "error", message: "Login is not ready yet. Please try again later." });
       return;
     }
 
     setIsBusy(true);
-    setStatus("");
+    setStatus({ tone: "info", message: "" });
 
     const credentials = {
       email,
@@ -584,15 +584,22 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
     setIsBusy(false);
 
     if (error) {
-      setStatus(error.message);
+      setStatus({ tone: "error", message: error.message });
       return;
     }
 
-    setStatus(
-      mode === "signup"
-        ? "Account created. Please check your email and confirm before signing in."
-        : "Signed in successfully."
-    );
+    if (mode === "signup") {
+      setFullName("");
+      setEmail("");
+      setPassword("");
+      setStatus({
+        tone: "success",
+        message: "Registration submitted. Please check your email for the confirmation link before signing in.",
+      });
+      return;
+    }
+
+    setStatus({ tone: "success", message: "Signed in successfully." });
   }
 
   async function handleSignOut() {
@@ -600,7 +607,7 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
 
     await supabase.auth.signOut();
     setProfile(null);
-    setStatus("Signed out.");
+    setStatus({ tone: "info", message: "Signed out." });
   }
 
   return (
@@ -735,7 +742,20 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
                 <MailCheck size={18} /> {mode === "signup" ? "Send confirmation email" : "Sign in"}
               </button>
 
-              {status && <p className="rounded-lg bg-white p-4 text-sm leading-6 text-slate-600">{status}</p>}
+              {status.message && (
+                <p
+                  className={`rounded-lg border p-4 text-sm font-bold leading-6 ${
+                    status.tone === "success"
+                      ? "border-leaf-500/30 bg-leaf-500/10 text-leaf-700"
+                      : status.tone === "error"
+                        ? "border-red-200 bg-red-50 text-red-700"
+                        : "border-ocean-100 bg-white text-slate-600"
+                  }`}
+                  role={status.tone === "error" ? "alert" : "status"}
+                >
+                  {status.message}
+                </p>
+              )}
             </form>
           )}
         </div>
