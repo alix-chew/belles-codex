@@ -153,6 +153,43 @@ using (
 );
 ```
 
-## 5. Role safety note
+## 5. Add owner team access policies
 
-The public sign-up form creates `customer` accounts only. Staff, manager, and owner access should be assigned by the owner in Supabase by changing `public.profiles.role`.
+Run this after the profiles table so the owner account can see profiles and assign roles from the Team Access page.
+
+```sql
+create or replace function public.current_user_role()
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select role from public.profiles where id = auth.uid()
+$$;
+
+grant execute on function public.current_user_role() to authenticated;
+
+drop policy if exists "Owner can read all profiles" on public.profiles;
+
+create policy "Owner can read all profiles"
+on public.profiles
+for select
+to authenticated
+using (public.current_user_role() = 'owner');
+
+drop policy if exists "Owner can update team roles" on public.profiles;
+
+create policy "Owner can update team roles"
+on public.profiles
+for update
+to authenticated
+using (public.current_user_role() = 'owner')
+with check (role in ('customer', 'staff', 'manager', 'owner'));
+```
+
+Keep at least one account set to `owner`, or there will be no account able to manage roles from the website.
+
+## 6. Role safety note
+
+The public sign-up form creates `customer` accounts only. Staff, manager, and owner access should be assigned from the owner-only Team Access page or directly in Supabase by changing `public.profiles.role`.

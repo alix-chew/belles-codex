@@ -1,5 +1,7 @@
 import {
   ArrowRight,
+  BarChart3,
+  ClipboardList,
   Clock3,
   Crown,
   Leaf,
@@ -11,6 +13,7 @@ import {
   ShoppingBag,
   Sprout,
   UserRound,
+  UsersRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
@@ -191,7 +194,44 @@ export default function App() {
             setProfile={setProfile}
           />
         )}
-        {!["about", "menu", "contact", "login"].includes(route.page) && <HomePage />}
+        {route.page === "customer-purchases" && (
+          <PlaceholderToolPage
+            session={session}
+            activeRole={activeRole}
+            allowedRoles={["customer", "staff", "manager", "owner"]}
+            eyebrow="Customer purchases"
+            title="Purchase tools are coming next."
+            text="This page will hold customer order history, favourites, and booking requests. For now, orders can be placed from the Menu page."
+            actionLabel="Go to menu"
+            actionHref="#/menu"
+          />
+        )}
+        {route.page === "sales" && (
+          <PlaceholderToolPage
+            session={session}
+            activeRole={activeRole}
+            allowedRoles={teamRoles}
+            eyebrow="Sales"
+            title="Sales tools are ready for the next build."
+            text="Staff, managers, and owners will use this page to check incoming orders and daily sales activity."
+            actionLabel="Back to account"
+            actionHref="#/login"
+          />
+        )}
+        {route.page === "management" && (
+          <PlaceholderToolPage
+            session={session}
+            activeRole={activeRole}
+            allowedRoles={leadershipRoles}
+            eyebrow="Management"
+            title="Management controls are parked here."
+            text="Managers and owners will use this area for operational reports, menu updates, and staff-facing controls."
+            actionLabel="Back to account"
+            actionHref="#/login"
+          />
+        )}
+        {route.page === "team" && <TeamAccessPage session={session} activeRole={activeRole} />}
+        {!["about", "menu", "contact", "login", "customer-purchases", "sales", "management", "team"].includes(route.page) && <HomePage />}
       </main>
     </div>
   );
@@ -669,19 +709,30 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
                   icon={<ShoppingBag size={18} />}
                   title="Customer purchases"
                   text="Order kopi, save favourites, and request table bookings."
+                  href="#/customer-purchases"
                 />
                 {isTeam && (
                   <AccountPanel
-                    icon={<ShieldCheck size={18} />}
-                    title="Team access"
-                    text="Your owner-assigned staff tools can appear here later."
+                    icon={<BarChart3 size={18} />}
+                    title="Sales"
+                    text="Staff order and sales tools will live here."
+                    href="#/sales"
                   />
                 )}
                 {isLeadership && (
                   <AccountPanel
-                    icon={<Crown size={18} />}
+                    icon={<ClipboardList size={18} />}
                     title="Management"
                     text="Manager and owner controls are reserved for assigned accounts."
+                    href="#/management"
+                  />
+                )}
+                {activeRole === "owner" && (
+                  <AccountPanel
+                    icon={<UsersRound size={18} />}
+                    title="Team access"
+                    text="Assign customer, staff, manager, and owner roles."
+                    href="#/team"
                   />
                 )}
               </div>
@@ -779,9 +830,9 @@ function LoginPage({ session, activeRole, displayName, setProfile }) {
   );
 }
 
-function AccountPanel({ icon, title, text }) {
-  return (
-    <article className="rounded-lg border border-ocean-100 bg-white p-5">
+function AccountPanel({ icon, title, text, href }) {
+  const content = (
+    <>
       {icon && (
         <div className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-ocean-100 text-ocean-600">
           {icon}
@@ -789,6 +840,242 @@ function AccountPanel({ icon, title, text }) {
       )}
       <h3 className="font-black text-slate-950">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <a
+        className="rounded-lg border border-ocean-100 bg-white p-5 transition hover:-translate-y-1 hover:shadow-lg"
+        href={href}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <article className="rounded-lg border border-ocean-100 bg-white p-5">
+      {content}
     </article>
+  );
+}
+
+function PlaceholderToolPage({ session, activeRole, allowedRoles, eyebrow, title, text, actionLabel, actionHref }) {
+  if (!session?.user) {
+    return <AccessMessage title="Please log in first." text="This account page is only available after sign in." href="#/login" label="Log in" />;
+  }
+
+  if (!allowedRoles.includes(activeRole)) {
+    return (
+      <AccessMessage
+        title="This page is not available for your account."
+        text="Ask the owner to update your role if you need this tool."
+        href="#/login"
+        label="Back to account"
+      />
+    );
+  }
+
+  return (
+    <section className="bg-white px-5 py-20 md:px-8">
+      <div className="mx-auto max-w-4xl rounded-lg border border-ocean-100 bg-ocean-50 p-8">
+        <p className="mb-3 text-sm font-black uppercase text-ocean-600">{eyebrow}</p>
+        <h1 className="text-4xl font-black leading-tight text-slate-950 md:text-5xl">{title}</h1>
+        <p className="mt-5 max-w-2xl leading-7 text-slate-600">{text}</p>
+        <a
+          className="mt-8 inline-flex items-center gap-2 rounded-lg bg-leaf-700 px-5 py-3 font-black text-white hover:bg-leaf-500"
+          href={actionHref}
+        >
+          {actionLabel} <ArrowRight size={18} />
+        </a>
+      </div>
+    </section>
+  );
+}
+
+function TeamAccessPage({ session, activeRole }) {
+  const [profiles, setProfiles] = useState([]);
+  const [status, setStatus] = useState({ tone: "info", message: "" });
+  const [isLoading, setIsLoading] = useState(false);
+  const [savingId, setSavingId] = useState("");
+
+  const canManageTeam = session?.user && activeRole === "owner";
+
+  useEffect(() => {
+    if (!canManageTeam || !supabase) return undefined;
+
+    let isCurrent = true;
+
+    async function loadProfiles() {
+      setIsLoading(true);
+      setStatus({ tone: "info", message: "" });
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, role, created_at")
+        .order("created_at", { ascending: false });
+
+      if (!isCurrent) return;
+
+      setIsLoading(false);
+
+      if (error) {
+        setStatus({
+          tone: "error",
+          message: `Team list could not load yet: ${error.message}`,
+        });
+        return;
+      }
+
+      setProfiles(data || []);
+    }
+
+    loadProfiles();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [canManageTeam]);
+
+  async function handleRoleChange(profileId, nextRole) {
+    if (!supabase) return;
+
+    setSavingId(profileId);
+    setStatus({ tone: "info", message: "" });
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ role: nextRole })
+      .eq("id", profileId);
+
+    setSavingId("");
+
+    if (error) {
+      setStatus({ tone: "error", message: `Role was not updated: ${error.message}` });
+      return;
+    }
+
+    setProfiles((current) =>
+      current.map((profile) => (profile.id === profileId ? { ...profile, role: nextRole } : profile))
+    );
+    setStatus({ tone: "success", message: "Role updated." });
+  }
+
+  if (!session?.user) {
+    return <AccessMessage title="Please log in first." text="Team access is only available to the owner account." href="#/login" label="Log in" />;
+  }
+
+  if (activeRole !== "owner") {
+    return (
+      <AccessMessage
+        title="Owner access only."
+        text="Only the owner account can assign customer, staff, manager, and owner roles."
+        href="#/login"
+        label="Back to account"
+      />
+    );
+  }
+
+  return (
+    <section className="bg-white px-5 py-20 md:px-8">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="mb-3 text-sm font-black uppercase text-ocean-600">Team access</p>
+            <h1 className="text-4xl font-black leading-tight text-slate-950 md:text-6xl">Assign account roles.</h1>
+          </div>
+          <a
+            className="inline-flex items-center justify-center rounded-lg border border-ocean-100 bg-white px-5 py-3 font-black text-ocean-600 hover:bg-ocean-50"
+            href="#/login"
+          >
+            Back to account
+          </a>
+        </div>
+
+        <div className="rounded-lg border border-ocean-100 bg-ocean-50 p-5">
+          <p className="text-sm leading-6 text-slate-600">
+            New sign-ups start as customers. Use this page to promote trusted accounts to staff, manager, or owner when needed.
+          </p>
+
+          {status.message && (
+            <p
+              className={`mt-4 rounded-lg border p-4 text-sm font-bold leading-6 ${
+                status.tone === "success"
+                  ? "border-leaf-500/30 bg-leaf-500/10 text-leaf-700"
+                  : status.tone === "error"
+                    ? "border-red-200 bg-red-50 text-red-700"
+                    : "border-ocean-100 bg-white text-slate-600"
+              }`}
+              role={status.tone === "error" ? "alert" : "status"}
+            >
+              {status.message}
+            </p>
+          )}
+
+          <div className="mt-5 overflow-hidden rounded-lg border border-ocean-100 bg-white">
+            <div className="grid grid-cols-[1fr_150px] gap-4 border-b border-ocean-100 bg-ocean-100 px-4 py-3 text-sm font-black text-ocean-600 md:grid-cols-[1fr_180px_170px]">
+              <span>Account</span>
+              <span className="hidden md:block">Current role</span>
+              <span>Assign role</span>
+            </div>
+
+            {isLoading && <p className="p-4 text-sm text-slate-600">Loading team accounts...</p>}
+
+            {!isLoading && profiles.length === 0 && (
+              <p className="p-4 text-sm leading-6 text-slate-600">
+                No team profiles are visible yet. If users already exist, run the owner role policies in the setup guide.
+              </p>
+            )}
+
+            {profiles.map((profile) => (
+              <div
+                className="grid grid-cols-[1fr_150px] gap-4 border-b border-ocean-100 px-4 py-4 last:border-b-0 md:grid-cols-[1fr_180px_170px] md:items-center"
+                key={profile.id}
+              >
+                <div>
+                  <p className="font-black text-slate-950">{profile.full_name || "Unnamed account"}</p>
+                  <p className="mt-1 break-all text-xs text-slate-500">{profile.id}</p>
+                </div>
+                <p className="hidden text-sm font-bold text-slate-600 md:block">{roleLabels[profile.role] || profile.role}</p>
+                <label className="sr-only" htmlFor={`role-${profile.id}`}>
+                  Assign role for {profile.full_name || profile.id}
+                </label>
+                <select
+                  className="rounded-lg border border-ocean-100 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-ocean-600 disabled:cursor-wait disabled:opacity-60"
+                  id={`role-${profile.id}`}
+                  value={profile.role}
+                  disabled={savingId === profile.id}
+                  onChange={(event) => handleRoleChange(profile.id, event.target.value)}
+                >
+                  {Object.entries(roleLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AccessMessage({ title, text, href, label }) {
+  return (
+    <section className="bg-white px-5 py-20 md:px-8">
+      <div className="mx-auto max-w-3xl rounded-lg border border-ocean-100 bg-ocean-50 p-8">
+        <h1 className="text-3xl font-black text-slate-950">{title}</h1>
+        <p className="mt-4 leading-7 text-slate-600">{text}</p>
+        <a
+          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-leaf-700 px-5 py-3 font-black text-white hover:bg-leaf-500"
+          href={href}
+        >
+          {label} <ArrowRight size={18} />
+        </a>
+      </div>
+    </section>
   );
 }

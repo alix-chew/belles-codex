@@ -172,6 +172,10 @@ The website uses hash-based in-app pages:
 3. Menu
 4. Contact
 5. Login / Account
+6. Customer purchases
+7. Sales
+8. Management
+9. Team access
 
 ### Header
 
@@ -247,7 +251,9 @@ It includes:
 - Full name field for new customer accounts
 - Email confirmation message after account creation
 - Signed-in customer purchase panel
-- Staff/manager/owner account panels only after the owner assigns those roles in Supabase
+- Staff/manager/owner account panels only after the owner assigns those roles
+- Placeholder destinations for customer purchases, sales, and management
+- Owner-only Team Access page for assigning customer, staff, manager, and owner roles
 
 Supabase configuration is kept outside source code through Vite environment variables:
 
@@ -301,10 +307,10 @@ Suggested future pages:
 - Loyalty page
 - Payment integration
 - Booking form
-- Customer order history
-- Staff order dashboard
-- Manager operations dashboard
-- Owner settings dashboard
+- Completed customer order history
+- Completed staff sales dashboard
+- Completed manager operations dashboard
+- Expanded owner settings dashboard
 
 ## 10. QA Notes
 
