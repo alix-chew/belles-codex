@@ -2,16 +2,15 @@
 
 ## 1. Project Summary
 
-This project is a warm, modern, single-page website for **Blue Ocean Kopi & Co.**, a neighbourhood plant-based cafe at **YKK Street in Singapore**.
+This project is a warm, modern, multi-page website for **Blue Ocean Kopi & Co.**, a neighbourhood plant-based cafe at **YKK Street in Singapore**.
 
 The latest build follows the attached specification photo:
 
 - Use Vite, React, and Tailwind CSS
-- Build a single-page cafe website
+- Build a cafe website with separate About, Menu, Contact, and Login pages
 - Include a main banner with cafe name, tagline, and action button
-- Include an About Us section
-- Include a Menu Preview section with prices in Singapore dollars
-- Include a Contact Us section with address and opening hours
+- Include a home-page Menu Preview section with prices in Singapore dollars
+- Include a Contact page with address and opening hours
 - Include Supabase-powered customer, staff, manager, and owner login with email confirmation
 - Require login before purchase requests
 - Use grey, light blue, and green colours for the UI/UX
@@ -71,7 +70,7 @@ Why it was chosen:
 - Provides email/password sign-up and sign-in without building a custom auth server
 - Supports email confirmation for new accounts
 - Fits a Vite and React front end through the official `@supabase/supabase-js` client
-- Supports login-gated purchase requests, table bookings, and role-based staff/manager/owner records
+- Supports login-gated purchase requests, table bookings, and owner-assigned staff/manager/owner records
 
 ### PDF-Derived Images
 
@@ -164,18 +163,15 @@ Future rule:
 
 Use large display type only for page heroes. Use tighter, smaller headings inside cards and functional sections.
 
-## 7. Layout and Page Sections
+## 7. Layout and Pages
 
-The single-page website contains:
+The website uses hash-based in-app pages:
 
-1. Header
-2. Main banner / hero
-3. About Us
-4. Menu Preview
-5. Login-gated Order page
-6. Contact Us
-7. Customer, staff, manager, and owner login
-8. Build Reference section
+1. Home
+2. About
+3. Menu
+4. Contact
+5. Login / Account
 
 ### Header
 
@@ -184,22 +180,23 @@ The header includes:
 - Brand mark
 - Cafe name
 - Short descriptor
-- Navigation links
+- Navigation links to separate pages
 - Log In / Account action button
 
-### Main Banner
+### Home Page
 
-The main banner includes:
+The home page includes:
 
-- Cafe name: Blue Ocean Kopi & Co.
-- Plant-based cafe positioning
-- Short value proposition
-- Clear action button linking to the menu
+- Main banner with cafe name, plant-based cafe positioning, and short value proposition
+- Clear action button linking to the Menu page
 - PDF-derived kopi/toast visual
+- Menu preview cards
 
-### About Us
+Preview cards link directly to the matching item on the Menu page.
 
-The About section explains the cafe as a modern plant-based neighbourhood cafe.
+### About Page
+
+The About page explains the cafe as a modern plant-based neighbourhood cafe.
 
 It includes three short feature cards:
 
@@ -207,7 +204,7 @@ It includes three short feature cards:
 - Slow mornings
 - YKK Street
 
-### Menu Preview
+### Menu Page
 
 The required menu items are:
 
@@ -221,49 +218,33 @@ Each item has:
 - Price in Singapore dollars
 - Preview image
 - Short description
-
-### Order Page
-
-Purchases are protected by Supabase login.
-
-Guest visitors see:
-
-- A locked purchase message
-- A clear button to log in
-- Explanation that email confirmation protects checkout
-
-Signed-in users see:
-
-- Menu item selector
 - Quantity field
-- Order total in Singapore dollars
-- Purchase request button
+- Order total
+- Order button
 
-When Supabase is configured and the `orders` table exists, purchase requests are saved to Supabase.
+Ordering lives on the Menu page. Guests who click to order are sent to the Login page. Signed-in customers can submit purchase requests to Supabase when the `orders` table exists.
 
-### Contact Us
+### Contact Page
 
-The contact section includes:
+The Contact page includes:
 
 - Address: YKK Street, Singapore
 - Opening hours:
   - Mon-Fri: 7:30 AM - 8:30 PM
   - Sat-Sun: 8:00 AM - 9:00 PM
 
-### Customer, Staff, Manager, and Owner Login
+### Login / Account Page
 
-The login section uses Supabase Auth.
+The Login page uses Supabase Auth.
 
 It includes:
 
 - Create account / sign in mode switch
 - Email and password fields
-- Customer, staff, manager, or owner account choice during sign-up
+- Full name field for new customer accounts
 - Email confirmation message after account creation
 - Signed-in customer purchase panel
-- Staff records panel for `staff`, `manager`, and `owner`
-- Manager tools panel for `manager` and `owner`
-- Owner control panel for `owner`
+- Staff/manager/owner account panels only after the owner assigns those roles in Supabase
 
 Supabase configuration is kept outside source code through Vite environment variables:
 
@@ -280,14 +261,14 @@ The React app is split into logical components inside `src/App.jsx`:
 
 - `Header`
 - `Hero`
-- `About`
+- `HomePage`
+- `AboutPage`
 - `InfoCard`
 - `MenuPreview`
-- `OrderSection`
-- `Contact`
-- `AuthSection`
+- `MenuPage`
+- `ContactPage`
+- `LoginPage`
 - `AccountPanel`
-- `DesignReference`
 
 This keeps the project easy to read while avoiding too many files for a small assignment website.
 
@@ -301,7 +282,7 @@ Comments are used only where they help:
 To add more pages later:
 
 1. Keep Vite, React, and Tailwind as the main stack.
-2. Add new sections as React components.
+2. Add new pages as React components and route them through the hash router.
 3. Reuse the same colour tokens and spacing rhythm.
 4. Keep prices in bold pills for menu-like content.
 5. Use green for the main action.
@@ -310,13 +291,11 @@ To add more pages later:
 8. Keep local images under `public/images/`.
 9. Keep Supabase keys in `.env.local`, not in committed files.
 
-Suggested future sections:
+Suggested future pages:
 
-- Full menu page
 - Catering page
 - Plant-based ingredient story
 - Loyalty page
-- Online ordering prototype
 - Payment integration
 - Booking form
 - Customer order history
@@ -326,14 +305,14 @@ Suggested future sections:
 
 ## 10. QA Notes
 
-Verified on 14 November 2026:
+Verified on 21 November 2026:
 
 - Dependencies installed with `pnpm`
 - Vite production build passed
 - React app compiled successfully
 - Tailwind CSS compiled through `@tailwindcss/vite`
 - Supabase client added through `@supabase/supabase-js`
-- Login-gated order page added for purchase requests
+- Menu page handles login-gated purchase requests
 - PDF-derived images were used instead of generated bitmaps
 - Old bitmap generator and generated BMP assets were removed
 

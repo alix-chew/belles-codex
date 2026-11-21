@@ -1,6 +1,6 @@
 # Blue Ocean Kopi & Co.
 
-A warm, modern single-page website for **Blue Ocean Kopi & Co.**, a neighbourhood plant-based cafe at YKK Street in Singapore.
+A warm, modern multi-page website for **Blue Ocean Kopi & Co.**, a neighbourhood plant-based cafe at YKK Street in Singapore.
 
 ## Stack
 
@@ -19,7 +19,7 @@ VITE_SUPABASE_URL=https://zfchieymyntbmpiyixjo.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-public-key-here
 ```
 
-See `SUPABASE_SETUP.md` for email verification, customer/staff/manager/owner roles, and login-gated purchase setup.
+See `SUPABASE_SETUP.md` for email verification, owner-assigned staff/manager/owner roles, and login-gated purchase setup.
 
 ## Run Locally
 

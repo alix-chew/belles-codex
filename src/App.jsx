@@ -1,10 +1,8 @@
 import {
   ArrowRight,
-  ClipboardList,
   Clock3,
   Crown,
   Leaf,
-  LockKeyhole,
   LogOut,
   MapPin,
   MailCheck,
@@ -14,32 +12,14 @@ import {
   Sprout,
   UserRound,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { isSupabaseConfigured, supabase, supabaseProjectUrl } from "./lib/supabase";
+import { useEffect, useMemo, useState } from "react";
+import { isSupabaseConfigured, supabase } from "./lib/supabase";
 
-const navItems = ["About", "Menu", "Order", "Contact", "Login"];
-
-const accountTypes = [
-  {
-    value: "customer",
-    label: "Customer",
-    detail: "Public customer account for purchases, favourites, and bookings.",
-  },
-  {
-    value: "staff",
-    label: "Staff",
-    detail: "Cafe counter account for viewing order and booking records.",
-  },
-  {
-    value: "manager",
-    label: "Manager",
-    detail: "Manager account for daily operations and menu updates.",
-  },
-  {
-    value: "owner",
-    label: "Owner",
-    detail: "Owner account for full site and business control.",
-  },
+const navItems = [
+  { label: "About", href: "#/about" },
+  { label: "Menu", href: "#/menu" },
+  { label: "Contact", href: "#/contact" },
+  { label: "Login", href: "#/login" },
 ];
 
 const roleLabels = {
@@ -49,10 +29,10 @@ const roleLabels = {
   owner: "Owner",
 };
 
-const adminRoles = ["staff", "manager", "owner"];
-const managerRoles = ["manager", "owner"];
+const teamRoles = ["staff", "manager", "owner"];
+const leadershipRoles = ["manager", "owner"];
 
-// Menu data is kept as structured content so new pages can reuse it later.
+// Menu data is kept as structured content so menu cards and order records stay consistent.
 const menuItems = [
   {
     id: "signature-kopi",
@@ -91,9 +71,31 @@ const openingHours = [
   "Sat-Sun: 8:00 AM - 9:00 PM",
 ];
 
+function getRoute() {
+  const hash = window.location.hash.replace(/^#/, "") || "/";
+  const [path] = hash.split("?");
+  const parts = path.split("/").filter(Boolean);
+
+  return {
+    page: parts[0] || "home",
+    itemId: parts[1] || null,
+  };
+}
+
 export default function App() {
+  const [route, setRoute] = useState(getRoute);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setRoute(getRoute());
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -151,31 +153,37 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-ocean-50 text-slate-900">
-      <Header session={session} />
+      <Header session={session} route={route} />
       <main>
-        <Hero />
-        <About />
-        <MenuPreview />
-        <OrderSection session={session} activeRole={activeRole} displayName={displayName} />
-        <Contact />
-        <AuthSection
-          session={session}
-          profile={profile}
-          activeRole={activeRole}
-          displayName={displayName}
-          setProfile={setProfile}
-        />
-        <DesignReference />
+        {route.page === "about" && <AboutPage />}
+        {route.page === "menu" && (
+          <MenuPage
+            selectedItemId={route.itemId}
+            session={session}
+            activeRole={activeRole}
+            displayName={displayName}
+          />
+        )}
+        {route.page === "contact" && <ContactPage />}
+        {route.page === "login" && (
+          <LoginPage
+            session={session}
+            activeRole={activeRole}
+            displayName={displayName}
+            setProfile={setProfile}
+          />
+        )}
+        {!["about", "menu", "contact", "login"].includes(route.page) && <HomePage />}
       </main>
     </div>
   );
 }
 
-function Header({ session }) {
+function Header({ session, route }) {
   return (
     <header className="sticky top-0 z-30 border-b border-ocean-100 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 md:px-8">
-        <a className="flex items-center gap-3" href="#home" aria-label="Blue Ocean Kopi & Co. home">
+        <a className="flex items-center gap-3" href="#/" aria-label="Blue Ocean Kopi & Co. home">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-ocean-600 text-lg font-black text-white">
             BO
           </span>
@@ -186,39 +194,54 @@ function Header({ session }) {
         </a>
 
         <nav className="hidden items-center gap-2 md:flex" aria-label="Primary navigation">
-          {navItems.map((item) => (
-            <a
-              className="rounded-lg px-4 py-2 text-sm font-bold text-slate-700 hover:bg-ocean-100"
-              href={`#${item.toLowerCase()}`}
-              key={item}
-            >
-              {item}
-            </a>
-          ))}
+          {navItems.map((item) => {
+            const isActive = route.page === item.href.replace("#/", "");
+
+            return (
+              <a
+                className={`rounded-lg px-4 py-2 text-sm font-bold ${
+                  isActive ? "bg-ocean-100 text-ocean-600" : "text-slate-700 hover:bg-ocean-100"
+                }`}
+                href={item.href}
+                key={item.label}
+              >
+                {item.label}
+              </a>
+            );
+          })}
         </nav>
 
         <a
           className="hidden items-center gap-2 rounded-lg bg-leaf-700 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-leaf-500 sm:flex"
-          href="#login"
+          href="#/login"
         >
           {session ? "Account" : "Log in"} <ArrowRight size={17} />
         </a>
 
-        <button
+        <a
           className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-ocean-100 bg-white text-ocean-600 md:hidden"
-          type="button"
-          aria-label="Navigation menu"
+          href="#/login"
+          aria-label="Open login"
         >
           <MenuIcon size={22} />
-        </button>
+        </a>
       </div>
     </header>
   );
 }
 
+function HomePage() {
+  return (
+    <>
+      <Hero />
+      <MenuPreview />
+    </>
+  );
+}
+
 function Hero() {
   return (
-    <section id="home" className="relative overflow-hidden bg-gradient-to-br from-ocean-50 via-white to-ocean-100">
+    <section className="relative overflow-hidden bg-gradient-to-br from-ocean-50 via-white to-ocean-100">
       <div className="mx-auto grid min-h-[calc(100vh-76px)] max-w-7xl items-center gap-12 px-5 py-16 md:grid-cols-[0.9fr_1.1fr] md:px-8 lg:py-20">
         <div>
           <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black text-ocean-600 shadow-sm ring-1 ring-ocean-100">
@@ -233,13 +256,13 @@ function Hero() {
           <div className="mt-8 flex flex-wrap gap-3">
             <a
               className="inline-flex items-center gap-2 rounded-lg bg-leaf-700 px-6 py-4 font-black text-white shadow-lg shadow-leaf-700/15 hover:bg-leaf-500"
-              href="#order"
+              href="#/menu"
             >
-              Order online <ArrowRight size={18} />
+              View menu <ArrowRight size={18} />
             </a>
             <a
               className="inline-flex items-center rounded-lg border border-ocean-100 bg-white px-6 py-4 font-black text-ocean-600 hover:bg-ocean-50"
-              href="#about"
+              href="#/about"
             >
               About us
             </a>
@@ -253,7 +276,7 @@ function Hero() {
             alt="PDF reference image showing kopi and kaya toast from the Kopi & Co. assignment"
           />
           <figcaption className="px-2 pt-3 text-sm text-stone-blue">
-            Reused visual reference from the assignment PDF, adapted for the Blue Ocean Kopi & Co. page.
+            Blue Ocean Kopi & Co. keeps the heart of local breakfast culture, refreshed with a greener table.
           </figcaption>
         </figure>
       </div>
@@ -261,15 +284,56 @@ function Hero() {
   );
 }
 
-function About() {
+function MenuPreview() {
   return (
-    <section id="about" className="bg-white px-5 py-20 md:px-8">
+    <section className="bg-soft-grey px-5 py-20 md:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="mb-3 text-sm font-black uppercase text-ocean-600">Menu preview</p>
+            <h2 className="text-4xl font-black text-slate-950 md:text-5xl">Three favourites to start.</h2>
+          </div>
+          <p className="max-w-md text-slate-600">
+            Prices are listed in Singapore dollars and kept prominent for quick scanning on mobile.
+          </p>
+        </div>
+        <div className="grid gap-5 md:grid-cols-3">
+          {menuItems.map((item) => (
+            <a
+              className="rounded-lg border border-ocean-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              href={`#/menu/${item.id}`}
+              key={item.id}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-2xl font-black text-slate-950">{item.name}</h3>
+                <span className="shrink-0 rounded-full bg-ocean-100 px-3 py-1 text-sm font-black text-ocean-600">
+                  {item.price}
+                </span>
+              </div>
+              <img
+                className="mt-6 aspect-[4/3] w-full rounded-lg border border-ocean-100 object-cover"
+                src={item.image}
+                alt={item.alt}
+                loading="lazy"
+              />
+              <p className="mt-5 leading-7 text-slate-600">{item.note}</p>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AboutPage() {
+  return (
+    <section className="bg-white px-5 py-20 md:px-8">
       <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[0.8fr_1.2fr]">
         <div>
           <p className="mb-3 text-sm font-black uppercase text-ocean-600">About us</p>
-          <h2 className="text-4xl font-black leading-tight text-slate-950 md:text-5xl">
+          <h1 className="text-4xl font-black leading-tight text-slate-950 md:text-6xl">
             Familiar kopitiam mornings, refreshed with a greener table.
-          </h2>
+          </h1>
         </div>
         <div className="grid gap-5 text-lg leading-8 text-slate-600">
           <p>
@@ -298,204 +362,154 @@ function InfoCard({ icon, title, text }) {
   );
 }
 
-function MenuPreview() {
-  return (
-    <section id="menu" className="bg-soft-grey px-5 py-20 md:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div>
-            <p className="mb-3 text-sm font-black uppercase text-ocean-600">Menu preview</p>
-            <h2 className="text-4xl font-black text-slate-950 md:text-5xl">Three favourites to start.</h2>
-          </div>
-          <p className="max-w-md text-slate-600">
-            Prices are listed in Singapore dollars and kept prominent for quick scanning on mobile.
-          </p>
-        </div>
-        <div className="grid gap-5 md:grid-cols-3">
-          {menuItems.map((item) => (
-            <article className="rounded-lg border border-ocean-100 bg-white p-6 shadow-sm" key={item.name}>
-              <div>
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-2xl font-black text-slate-950">{item.name}</h3>
-                  <span className="shrink-0 rounded-full bg-ocean-100 px-3 py-1 text-sm font-black text-ocean-600">
-                    {item.price}
-                  </span>
-                </div>
-                <img
-                  className="mt-6 aspect-[4/3] w-full rounded-lg border border-ocean-100 object-cover"
-                  src={item.image}
-                  alt={item.alt}
-                  loading="lazy"
-                />
-                <p className="mt-5 leading-7 text-slate-600">{item.note}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
+function MenuPage({ selectedItemId, session, activeRole, displayName }) {
+  const [quantities, setQuantities] = useState(() =>
+    Object.fromEntries(menuItems.map((item) => [item.id, 1]))
   );
-}
-
-function OrderSection({ session, activeRole, displayName }) {
-  const [selectedItemId, setSelectedItemId] = useState(menuItems[0].id);
-  const [quantity, setQuantity] = useState(1);
   const [orderStatus, setOrderStatus] = useState("");
-  const [isOrdering, setIsOrdering] = useState(false);
-  const selectedItem = menuItems.find((item) => item.id === selectedItemId) || menuItems[0];
-  const total = selectedItem.priceValue * quantity;
+  const [orderingItemId, setOrderingItemId] = useState("");
+  const selectedItem = useMemo(
+    () => menuItems.find((item) => item.id === selectedItemId),
+    [selectedItemId]
+  );
 
-  async function handleOrderSubmit(event) {
-    event.preventDefault();
-
+  async function handleOrder(item) {
     if (!session?.user) {
-      setOrderStatus("Please log in before making a purchase.");
+      window.location.hash = "#/login";
       return;
     }
 
-    setIsOrdering(true);
+    const quantity = Math.max(1, Math.min(12, Number(quantities[item.id]) || 1));
+    const total = Number((item.priceValue * quantity).toFixed(2));
+
+    setOrderingItemId(item.id);
     setOrderStatus("");
 
-    const orderPayload = {
+    const { error } = await supabase.from("orders").insert({
       user_id: session.user.id,
-      item_id: selectedItem.id,
-      item_name: selectedItem.name,
+      item_id: item.id,
+      item_name: item.name,
       quantity,
-      total_sgd: Number(total.toFixed(2)),
+      total_sgd: total,
       status: "pending",
-    };
+    });
 
-    if (supabase) {
-      const { error } = await supabase.from("orders").insert(orderPayload);
+    setOrderingItemId("");
 
-      setIsOrdering(false);
-
-      if (error) {
-        setOrderStatus(`Order could not be saved yet: ${error.message}`);
-        return;
-      }
-
-      setOrderStatus("Order received. Staff will prepare it shortly.");
+    if (error) {
+      setOrderStatus(`We could not send that order yet: ${error.message}`);
       return;
     }
 
-    setIsOrdering(false);
-    setOrderStatus("Supabase key needed before live purchases can be saved.");
+    setOrderStatus(`${quantity} x ${item.name} received. We will prepare it shortly.`);
   }
 
   return (
-    <section id="order" className="bg-white px-5 py-20 md:px-8">
-      <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[0.85fr_1.15fr] md:items-start">
-        <div>
-          <p className="mb-3 text-sm font-black uppercase text-ocean-600">Order page</p>
-          <h2 className="text-4xl font-black leading-tight text-slate-950 md:text-5xl">
-            Log in before you purchase.
-          </h2>
-          <p className="mt-5 max-w-xl leading-7 text-slate-600">
-            Public customers, staff, managers, and the owner all enter through Supabase login. Purchases unlock only after the account is confirmed and signed in.
+    <section className="bg-soft-grey px-5 py-20 md:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="mb-3 text-sm font-black uppercase text-ocean-600">Full menu</p>
+            <h1 className="text-4xl font-black text-slate-950 md:text-6xl">Choose your kopi break.</h1>
+          </div>
+          <p className="max-w-md text-slate-600">
+            Select a quantity and order from this page. If you are not logged in, we will send you to the login page first.
           </p>
         </div>
 
-        <div className="rounded-lg border border-ocean-100 bg-ocean-50 p-6 shadow-sm">
-          {!session ? (
-            <div>
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ocean-600 text-white">
-                  <LockKeyhole size={22} />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">Purchases are login-gated</h3>
-                  <p className="mt-2 leading-7 text-slate-600">
-                    Create an account or sign in first. Supabase email confirmation protects the checkout flow.
-                  </p>
-                </div>
-              </div>
-              <a
-                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-leaf-700 px-5 py-3 font-black text-white hover:bg-leaf-500"
-                href="#login"
+        {session && (
+          <div className="mb-6 rounded-lg border border-ocean-100 bg-white p-4 text-sm text-slate-600">
+            Ordering as <strong className="text-slate-950">{displayName}</strong> ({roleLabels[activeRole] || activeRole}).
+          </div>
+        )}
+
+        {orderStatus && <p className="mb-6 rounded-lg bg-white p-4 text-sm leading-6 text-slate-600">{orderStatus}</p>}
+
+        <div className="grid gap-6">
+          {menuItems.map((item) => {
+            const isSelected = selectedItem?.id === item.id;
+            const quantity = Math.max(1, Math.min(12, Number(quantities[item.id]) || 1));
+            const total = item.priceValue * quantity;
+
+            return (
+              <article
+                className={`grid gap-6 rounded-lg border bg-white p-5 shadow-sm md:grid-cols-[280px_1fr] ${
+                  isSelected ? "border-ocean-600 ring-4 ring-ocean-100" : "border-ocean-100"
+                }`}
+                id={item.id}
+                key={item.id}
               >
-                Log in to purchase <ArrowRight size={18} />
-              </a>
-            </div>
-          ) : (
-            <form className="grid gap-5" onSubmit={handleOrderSubmit}>
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-leaf-700 text-white">
-                  <ShoppingBag size={22} />
+                <img className="aspect-[4/3] w-full rounded-lg object-cover" src={item.image} alt={item.alt} />
+                <div className="grid gap-5">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-3xl font-black text-slate-950">{item.name}</h2>
+                      <p className="mt-3 max-w-2xl leading-7 text-slate-600">{item.note}</p>
+                    </div>
+                    <span className="rounded-full bg-ocean-100 px-4 py-2 text-sm font-black text-ocean-600">
+                      {item.price}
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-[140px_1fr_auto] sm:items-end">
+                    <label className="grid gap-2 text-sm font-black text-slate-950">
+                      Quantity
+                      <input
+                        className="rounded-lg border border-ocean-100 bg-white px-4 py-3 font-normal text-slate-700 outline-none focus:border-ocean-600"
+                        type="number"
+                        min="1"
+                        max="12"
+                        value={quantity}
+                        onChange={(event) =>
+                          setQuantities((current) => ({
+                            ...current,
+                            [item.id]: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <div className="rounded-lg border border-ocean-100 bg-ocean-50 px-4 py-3">
+                      <p className="text-xs font-black uppercase text-ocean-600">Total</p>
+                      <p className="text-2xl font-black text-slate-950">S${total.toFixed(2)}</p>
+                    </div>
+                    <button
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-leaf-700 px-5 py-4 font-black text-white hover:bg-leaf-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      type="button"
+                      disabled={orderingItemId === item.id}
+                      onClick={() => handleOrder(item)}
+                    >
+                      <ShoppingBag size={18} />
+                      {session ? "Order" : "Log in to order"}
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">Ready to order, {displayName}</h3>
-                  <p className="mt-1 text-slate-600">Signed in as {roleLabels[activeRole] || activeRole}.</p>
-                </div>
-              </div>
-
-              <label className="grid gap-2 text-sm font-black text-slate-950">
-                Choose item
-                <select
-                  className="rounded-lg border border-ocean-100 bg-white px-4 py-3 font-normal text-slate-700 outline-none focus:border-ocean-600"
-                  value={selectedItemId}
-                  onChange={(event) => setSelectedItemId(event.target.value)}
-                >
-                  {menuItems.map((item) => (
-                    <option value={item.id} key={item.id}>
-                      {item.name} - {item.price}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="grid gap-2 text-sm font-black text-slate-950">
-                Quantity
-                <input
-                  className="rounded-lg border border-ocean-100 bg-white px-4 py-3 font-normal text-slate-700 outline-none focus:border-ocean-600"
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={quantity}
-                  onChange={(event) => setQuantity(Number(event.target.value))}
-                />
-              </label>
-
-              <div className="rounded-lg border border-ocean-100 bg-white p-5">
-                <p className="text-sm font-black uppercase text-ocean-600">Order total</p>
-                <p className="mt-2 text-3xl font-black text-slate-950">S${total.toFixed(2)}</p>
-              </div>
-
-              <button
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-leaf-700 px-5 py-4 font-black text-white shadow-sm hover:bg-leaf-500 disabled:cursor-not-allowed disabled:opacity-60"
-                type="submit"
-                disabled={isOrdering}
-              >
-                <ShoppingBag size={18} /> Place purchase request
-              </button>
-
-              {orderStatus && <p className="rounded-lg bg-white p-4 text-sm leading-6 text-slate-600">{orderStatus}</p>}
-            </form>
-          )}
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>
   );
 }
 
-function Contact() {
+function ContactPage() {
   return (
-    <section id="contact" className="bg-ocean-600 px-5 py-20 text-white md:px-8">
+    <section className="bg-ocean-600 px-5 py-20 text-white md:px-8">
       <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1fr_0.8fr] md:items-start">
         <div>
           <p className="mb-3 text-sm font-black uppercase text-ocean-100">Contact us</p>
-          <h2 className="text-4xl font-black leading-tight md:text-5xl">Drop by for kopi on YKK Street.</h2>
+          <h1 className="text-4xl font-black leading-tight md:text-6xl">Drop by for kopi on YKK Street.</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-ocean-100">
             Find us at YKK Street in Singapore. Come for breakfast, a plant-based laksa lunch, or a calmer afternoon kopi.
           </p>
         </div>
         <div className="rounded-lg border border-white/15 bg-white/10 p-6 backdrop-blur">
           <div className="mb-6">
-            <h3 className="font-black">Address</h3>
+            <h2 className="font-black">Address</h2>
             <p className="mt-2 text-ocean-100">YKK Street, Singapore</p>
           </div>
           <div>
-            <h3 className="font-black">Opening hours</h3>
+            <h2 className="font-black">Opening hours</h2>
             <ul className="mt-2 space-y-2 text-ocean-100">
               {openingHours.map((hours) => (
                 <li key={hours}>{hours}</li>
@@ -508,22 +522,21 @@ function Contact() {
   );
 }
 
-function AuthSection({ session, profile, activeRole, displayName, setProfile }) {
-  const [mode, setMode] = useState("signup");
-  const [role, setRole] = useState("customer");
+function LoginPage({ session, activeRole, displayName, setProfile }) {
+  const [mode, setMode] = useState("signin");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
   const [isBusy, setIsBusy] = useState(false);
-  const isAdmin = adminRoles.includes(activeRole);
-  const isManager = managerRoles.includes(activeRole);
+  const isTeam = teamRoles.includes(activeRole);
+  const isLeadership = leadershipRoles.includes(activeRole);
 
   async function handleAuthSubmit(event) {
     event.preventDefault();
 
     if (!supabase) {
-      setStatus("Add your Supabase publishable key first, then restart the dev server.");
+      setStatus("Login is not ready yet. Please try again later.");
       return;
     }
 
@@ -542,9 +555,9 @@ function AuthSection({ session, profile, activeRole, displayName, setProfile }) 
             options: {
               data: {
                 full_name: fullName,
-                role,
+                role: "customer",
               },
-              emailRedirectTo: `${window.location.origin}/#login`,
+              emailRedirectTo: `${window.location.origin}/#/login`,
             },
           })
         : await supabase.auth.signInWithPassword(credentials);
@@ -572,23 +585,23 @@ function AuthSection({ session, profile, activeRole, displayName, setProfile }) 
   }
 
   return (
-    <section id="login" className="bg-white px-5 py-20 md:px-8">
+    <section className="bg-white px-5 py-20 md:px-8">
       <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-start">
         <div>
-          <p className="mb-3 text-sm font-black uppercase text-ocean-600">Supabase login</p>
-          <h2 className="text-4xl font-black leading-tight text-slate-950 md:text-5xl">
-            One account door for every role.
-          </h2>
+          <p className="mb-3 text-sm font-black uppercase text-ocean-600">Account</p>
+          <h1 className="text-4xl font-black leading-tight text-slate-950 md:text-6xl">
+            Log in or create an account.
+          </h1>
           <p className="mt-5 max-w-xl leading-7 text-slate-600">
-            Public customers, staff, managers, and the owner log in here. New accounts receive a Supabase confirmation email before they can purchase or manage records.
+            Sign in to order online, save your favourites, and request table bookings. New customer accounts receive a confirmation email.
           </p>
         </div>
 
         <div className="rounded-lg border border-ocean-100 bg-ocean-50 p-6 shadow-sm">
           {!isSupabaseConfigured && (
             <div className="mb-5 rounded-lg border border-ocean-100 bg-white p-4 text-sm leading-6 text-slate-600">
-              <strong className="block text-slate-950">Supabase key needed</strong>
-              Add <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> for project <code>{supabaseProjectUrl}</code>.
+              <strong className="block text-slate-950">Login is being set up</strong>
+              Please check back shortly.
             </div>
           )}
 
@@ -598,14 +611,14 @@ function AuthSection({ session, profile, activeRole, displayName, setProfile }) 
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-leaf-700 text-white">
                   {activeRole === "owner" ? (
                     <Crown size={22} />
-                  ) : isAdmin ? (
+                  ) : isTeam ? (
                     <ShieldCheck size={22} />
                   ) : (
                     <UserRound size={22} />
                   )}
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-slate-950">Welcome, {displayName}</h3>
+                  <h2 className="text-2xl font-black text-slate-950">Welcome, {displayName}</h2>
                   <p className="mt-1 text-slate-600">Signed in as {roleLabels[activeRole] || activeRole}.</p>
                 </div>
               </div>
@@ -616,25 +629,18 @@ function AuthSection({ session, profile, activeRole, displayName, setProfile }) 
                   title="Customer purchases"
                   text="Order kopi, save favourites, and request table bookings."
                 />
-                {isAdmin && (
-                  <AccountPanel
-                    icon={<ClipboardList size={18} />}
-                    title="Staff records"
-                    text="View order requests, booking records, and daily cafe work."
-                  />
-                )}
-                {isManager && (
+                {isTeam && (
                   <AccountPanel
                     icon={<ShieldCheck size={18} />}
-                    title="Manager tools"
-                    text="Manage menu updates, order status, and staff workflows."
+                    title="Team access"
+                    text="Your owner-assigned staff tools can appear here later."
                   />
                 )}
-                {activeRole === "owner" && (
+                {isLeadership && (
                   <AccountPanel
                     icon={<Crown size={18} />}
-                    title="Owner control"
-                    text="Full business overview for accounts, staff roles, and site settings."
+                    title="Management"
+                    text="Manager and owner controls are reserved for assigned accounts."
                   />
                 )}
               </div>
@@ -650,7 +656,7 @@ function AuthSection({ session, profile, activeRole, displayName, setProfile }) 
           ) : (
             <form className="grid gap-4" onSubmit={handleAuthSubmit}>
               <div className="inline-grid grid-cols-2 rounded-lg bg-white p-1">
-                {["signup", "signin"].map((item) => (
+                {["signin", "signup"].map((item) => (
                   <button
                     className={`rounded-md px-4 py-3 text-sm font-black ${
                       mode === item ? "bg-ocean-600 text-white" : "text-slate-600"
@@ -665,39 +671,17 @@ function AuthSection({ session, profile, activeRole, displayName, setProfile }) 
               </div>
 
               {mode === "signup" && (
-                <>
-                  <label className="grid gap-2 text-sm font-black text-slate-950">
-                    Full name
-                    <input
-                      className="rounded-lg border border-ocean-100 bg-white px-4 py-3 font-normal text-slate-700 outline-none focus:border-ocean-600"
-                      type="text"
-                      value={fullName}
-                      onChange={(event) => setFullName(event.target.value)}
-                      placeholder="Your name"
-                    />
-                  </label>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {accountTypes.map((type) => (
-                      <label
-                        className={`cursor-pointer rounded-lg border bg-white p-4 ${
-                          role === type.value ? "border-ocean-600 ring-2 ring-ocean-100" : "border-ocean-100"
-                        }`}
-                        key={type.value}
-                      >
-                        <input
-                          className="sr-only"
-                          type="radio"
-                          name="role"
-                          value={type.value}
-                          checked={role === type.value}
-                          onChange={() => setRole(type.value)}
-                        />
-                        <span className="font-black text-slate-950">{type.label}</span>
-                        <span className="mt-2 block text-sm leading-6 text-slate-600">{type.detail}</span>
-                      </label>
-                    ))}
-                  </div>
-                </>
+                <label className="grid gap-2 text-sm font-black text-slate-950">
+                  Full name
+                  <input
+                    className="rounded-lg border border-ocean-100 bg-white px-4 py-3 font-normal text-slate-700 outline-none focus:border-ocean-600"
+                    type="text"
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
+                    placeholder="Your name"
+                    required
+                  />
+                </label>
               )}
 
               <label className="grid gap-2 text-sm font-black text-slate-950">
@@ -752,28 +736,5 @@ function AccountPanel({ icon, title, text }) {
       <h3 className="font-black text-slate-950">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
     </article>
-  );
-}
-
-function DesignReference() {
-  return (
-    <section className="bg-white px-5 py-16 md:px-8" aria-labelledby="reference-title">
-      <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-center">
-        <div>
-          <p className="mb-3 text-sm font-black uppercase text-ocean-600">Build reference</p>
-          <h2 id="reference-title" className="text-3xl font-black text-slate-950">
-            Vite, React, and Tailwind CSS.
-          </h2>
-          <p className="mt-4 leading-7 text-slate-600">
-            This implementation follows the attached requirement photo by using the required front-end stack and a grey, light blue, and green UI palette.
-          </p>
-        </div>
-        <img
-          className="rounded-lg border border-ocean-100 shadow-xl shadow-ocean-600/10"
-          src="/images/codex-build-reference.png"
-          alt="PDF reference image showing the Vite React Tailwind build prompt"
-        />
-      </div>
-    </section>
   );
 }

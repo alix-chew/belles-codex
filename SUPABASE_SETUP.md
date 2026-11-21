@@ -155,4 +155,4 @@ using (
 
 ## 5. Role safety note
 
-The sign-up form lets a user request `customer`, `staff`, `manager`, or `owner` for the assignment demo. For a real cafe, public sign-up should default to `customer`; staff, manager, and owner access should be approved by the owner in Supabase by changing `public.profiles.role`.
+The public sign-up form creates `customer` accounts only. Staff, manager, and owner access should be assigned by the owner in Supabase by changing `public.profiles.role`.
