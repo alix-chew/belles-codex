@@ -8,7 +8,9 @@ https://zfchieymyntbmpiyixjo.supabase.co
 
 ## 1. Add the public key
 
-In Supabase, open **Project Settings > API** and copy the **publishable key** or **anon public key**.
+In Supabase, open the project dashboard, then open the **Connect** dialog or **Project Settings > API**.
+
+Copy the **publishable key**. In older projects, this may be labelled as the **anon public key**.
 
 Create a local `.env.local` file:
 
@@ -18,6 +20,12 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-public-key-here
 ```
 
 Restart the Vite dev server after adding the key.
+
+The app also accepts this older variable name if your dashboard shows an anon key:
+
+```env
+VITE_SUPABASE_ANON_KEY=your-anon-public-key-here
+```
 
 ## 2. Turn on email verification
 
